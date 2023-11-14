@@ -1,4 +1,3 @@
-import tkinter
 from tkinter import *
 import time
 import math
@@ -12,7 +11,10 @@ class Vue:
         self.creer_page_jeu()
         self.creeps = []
         self.id = 0
-
+        self.tourPoison = []
+        self.tourProjectile = []
+        self.tourEclaire = []
+        #self.afficher_debut()
 
 
     def creer_page_jeu(self):
@@ -90,6 +92,7 @@ class Vue:
                 elif self.sentier[p][i] == "CC":
                     self.canevas.create_rectangle(x, y, x + self.modele.taille_case, y + self.modele.taille_case,
                                                   fill="darkgray", outline="gold")
+
         # buttons et labels
         self.label_chrono = Label(self.cadre_jeu, text="Chrono", font=("Arial", 13))
         self.label_chrono.place(x=self.modele.taille_case * 2, y=self.modele.taille_case * 20,
@@ -123,14 +126,15 @@ class Vue:
         self.label_argent.place(x=self.modele.taille_case * 25, y=self.modele.taille_case * 22.5,
                                 height=self.modele.taille_case * 1, width=self.modele.taille_case * 3)
 
-        self.boutton_pro.bind("<ButtonRelease-1>", lambda event: (self.modele.test()))
-        self.boutton_ecl.bind("<ButtonRelease-1>", lambda event: (self.modele.test()))
-        self.boutton_poi.bind("<ButtonRelease-1>", lambda event: (self.modele.test()))
+        self.boutton_pro.bind("<ButtonRelease-1>", lambda event: (self.afficher_tour_projectile()))
+        self.boutton_ecl.bind("<ButtonRelease-1>", lambda event: (self.afficher_tour_eclaire()))
+        self.boutton_poi.bind("<ButtonRelease-1>", lambda event: (self.afficher_tour_poison()))
 
     def afficher_vie(self):
         self.label_nbr_vies.config(text="Nbr de vies\n" + str(self.modele.vie))
     def afficher_argent(self):
         self.label_argent.config(text="Argent\n" + str(self.modele.argent))
+
     def afficher_creep(self):
         for creep in self.creeps:
             self.canevas.delete(creep)
@@ -139,7 +143,9 @@ class Vue:
         for creep in self.modele.creeps:
             x = creep.x
             y = creep.y
-            self.creeps.append(self.canevas.create_rectangle(x + taille_case/2, y + taille_case/2, x + taille_case * 1.5, y + taille_case * 1.5, fill="blue"))
+            self.creeps.append(
+             self.canevas.create_rectangle(x + taille_case / 2, y + taille_case / 2, x + taille_case * 1.5,
+                                                  y + taille_case * 1.5, fill="blue"))
 
     def afficher_cadrier(self):
         for i in range(self.modele.largeur_grille + 1):
@@ -160,17 +166,101 @@ class Vue:
         self.boutton_debut.pack()
         self.boutton_debut.bind("<ButtonRelease-1>", lambda event: (self.creer_page_jeu(), self.boutton_debut.forget(), self.label_debut.forget()))
 
+    def afficher_projectiles(self):
+        self.canevas.delete("projectile")
+        taille_projectile = 7
+        for projectile in self.modele.projectiles:
+            projectile_tag = "projectile{}".format(id(projectile))
+            self.canevas.create_oval(
+                projectile.x - taille_projectile,
+                projectile.y - taille_projectile,
+                projectile.x + taille_projectile,
+                projectile.y + taille_projectile,
+                fill="red",
+                tags=(projectile_tag, "projectile")
+            )
+
+    def on_press(self, event):
+        start_x = self.canevas.canvasx(event.x)
+        start_y = self.canevas.canvasy(event.y)
+        self.canevas.data = {'start_x': start_x, 'start_y': start_y}
+
+    def on_drag(self, event):
+        cur_x = self.canevas.canvasx(event.x)
+        cur_y = self.canevas.canvasy(event.y)
+        self.canevas.move(self.tour, cur_x - self.canevas.data['start_x'], cur_y - self.canevas.data['start_y'])
+        self.canevas.data['start_x'] = cur_x
+        self.canevas.data['start_y'] = cur_y
+
+    def afficher_tour_poison(self):
+        taille_case = self.modele.taille_case
+
+        for tour in self.modele.tours:
+            x = 15 * taille_case
+            y = 19 * taille_case
+            self.tour = self.canevas.create_rectangle(x + taille_case / 2, y + taille_case / 2,
+                                                      x + taille_case * 1.5, y + taille_case * 1.5,
+                                                      fill="DarkGoldenrod1")
+
+        self.canevas.tag_bind(self.tour, '<ButtonPress-1>', lambda e: self.on_press(e))
+        self.canevas.tag_bind(self.tour, '<B1-Motion>', lambda e: self.on_drag(e))
+        self.canevas.tag_bind(self.tour, '<<ButtonRelease-1>', lambda e: self.tourPoison.append(self.tour))
+
+    def afficher_tour_projectile(self):
+        taille_case = self.modele.taille_case
+
+        for tour in self.modele.tours:
+            x = 15 * taille_case
+            y = 19 * taille_case
+            self.tour = self.canevas.create_rectangle(x + taille_case / 2, y + taille_case / 2,
+                                                      x + taille_case * 1.5,
+                                                      y + taille_case * 1.5, fill="Red")
+
+        self.canevas.tag_bind(self.tour, '<ButtonPress-1>', lambda e: self.on_press(e))
+        self.canevas.tag_bind(self.tour, '<B1-Motion>', lambda e: self.on_drag(e))
+        self.canevas.tag_bind(self.tour, '<<ButtonRelease-1>', lambda e: self.tourProjectile.append(self.tour))
+
+    def afficher_tour_eclaire(self):
+        taille_case = self.modele.taille_case
+
+        for tour in self.modele.tours:
+            x = 15 * taille_case
+            y = 19 * taille_case
+            self.tour = self.canevas.create_rectangle(x + taille_case / 2, y + taille_case / 2,
+                                                      x + taille_case * 1.5,
+                                                      y + taille_case * 1.5, fill="deep sky blue")
+
+        self.canevas.tag_bind(self.tour, '<ButtonPress-1>', lambda e: self.on_press(e))
+        self.canevas.tag_bind(self.tour, '<B1-Motion>', lambda e: self.on_drag(e))
+        self.canevas.tag_bind(self.tour, '<<ButtonRelease-1>', lambda e: self.tourEclaire.append(self.tour))
+
+    def afficher_amelioration(self):
+        amelioration = Canvas(width=600, height=300)
+        amelioration.place(relx=15, rely=15)
+
+
 class Projectile:
     def __init__(self, parent, cible, force, empoisone, vitesse, type):
-        self.position_initiale = (parent.x, parent.y)
+        self.x, self.y = parent.x, parent.y
+        self.position_initiale = (1000,50)
         self.cible = cible
         self.force = force
         self.empoisone = empoisone
         self.vitesse = vitesse
         self.type = type
+        self.parent = parent
+        self.position_cible = (self.cible.x, self.cible.y)
 
-    def deplacer(self):
-        pass
+
+
+    def deplacer_vers_cible(self):
+        if self.cible:
+            self.x, self.y = self.position_initiale
+
+
+
+
+
 
 
 class Tour:
@@ -183,8 +273,15 @@ class Tour:
         self.cout_amelioration = cout_amelioration
         self.range = range
 
-    def attacker(self):
-        pass
+    def attacker(self, cible):
+        force = 10
+        empoisone = False
+        vitesse = 5
+        type_projectile = "standard"
+        projectile = Projectile(self, cible, force, empoisone, vitesse, type_projectile)
+
+        self.parent.ajouter_projectile(projectile)
+        print(9)
 
     def ameliorer(self):
         pass
@@ -222,6 +319,7 @@ class Creep:
         self.x,self.y = HP.getAngledPoint(self.angle, self.speed, self.x, self.y)
 
 
+
 class Modele:
     def __init__(self, parent):
         self.game_over = False
@@ -246,10 +344,16 @@ class Modele:
         self.vie = 20
         self.niveau = 1
         self.round_started = False
-        self.can_place_towers = True
+        self.start = 0
+        self.projectiles = []
+        x_position_tour = 5
+        y_position_tour = 5
+        type_tour = "standard"
+        cout_amelioration = 50
+        range_tour = 100000
 
-
-
+        tour_test = Tour(self, x_position_tour, y_position_tour, type_tour, cout_amelioration, range_tour)
+        self.tours.append(tour_test)
 
     def deplacer_creeps(self):
         for creep in self.creeps:
@@ -268,15 +372,9 @@ class Modele:
         if self.vie <= 0:
             self.parent.game_over()
 
-    #changed
-    def finish_round(self):
-        self.round_started = False
-        self.time_round_ended = time.time()
 
-    def start_round(self):
-        self.round_started = True
-        self.creer_creep()
-
+    def ajouter_projectile(self, projectile):
+        self.projectiles.append(projectile)
 
 class Controler:
     def __init__(self):
@@ -286,26 +384,29 @@ class Controler:
         self.start_game()
         # self.vue.afficher_demarrage()
         # self.boucler()
+
     def start_loop(self):
         if not self.modele.game_over:
-            if self.modele.creep_cree > 0 and self.modele.round_started:
+            if self.modele.creep_cree > 0:
                 if self.modele.creeps[-1].y > 200:
                     self.modele.creer_creep()
-            elif not self.modele.creeps and self.modele.round_started:
-                self.modele.finish_round()
-            if not self.modele.round_started:
-                if time.time() - self.modele.time_round_ended <= 10:
-                    pass
-                else:
-                    self.modele.start_round()
+            elif self.modele.creeps == []:
+                pass
+            for tour in self.modele.tours:
+                cible = self.modele.creeps[0]
+                tour.attacker(cible)
+                self.modele.round_started = False
             self.vue.afficher_temps(f"{time.time() - self.modele.start:0.2f}")
             self.modele.deplacer_creeps()
             self.vue.afficher_creep()
             self.vue.id = self.vue.root.after(20, self.start_loop)
+            for projectile in self.modele.projectiles:
+                projectile.deplacer_vers_cible()
+            self.vue.afficher_projectiles()
 
     def start_game(self):
         self.modele.start = time.time()
-        self.modele.start_round()
+        self.modele.creer_creep()
         self.start_loop()
     def game_over(self):
         self.modele.game_over = True
